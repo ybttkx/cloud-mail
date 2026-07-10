@@ -136,6 +136,24 @@ const settingService = {
 
 		params.resendTokens = JSON.stringify(resendTokens);
 		await orm(c).update(setting).set({ ...params }).returning().get();
+
+		const finalTgBotToken = params.tgBotToken !== undefined ? params.tgBotToken : settingData.tgBotToken;
+		const finalCustomDomain = params.customDomain !== undefined ? params.customDomain : settingData.customDomain;
+
+		if (finalTgBotToken && finalCustomDomain) {
+			const webhookUrl = `${finalCustomDomain.replace(/\/$/, '')}/api/telegram/webhook`;
+			try {
+				const setWebhookRes = await fetch(`https://api.telegram.org/bot${finalTgBotToken}/setWebhook?url=${encodeURIComponent(webhookUrl)}`);
+				if (setWebhookRes.ok) {
+					console.log(`Telegram webhook set successfully to: ${webhookUrl}`);
+				} else {
+					console.error(`Failed to set Telegram webhook: ${await setWebhookRes.text()}`);
+				}
+			} catch (e) {
+				console.error(`Failed to set Telegram webhook: ${e.message}`);
+			}
+		}
+
 		await this.refresh(c);
 	},
 
