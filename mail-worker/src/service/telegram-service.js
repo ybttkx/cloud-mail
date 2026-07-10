@@ -6,7 +6,7 @@ import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 dayjs.extend(utc);
 dayjs.extend(timezone);
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import jwtUtils from '../utils/jwt-utils';
 import emailMsgTemplate from '../template/email-msg';
 import emailTextTemplate from '../template/email-text';
