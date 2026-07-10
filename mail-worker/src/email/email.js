@@ -166,6 +166,27 @@ export async function email(message, env, ctx) {
 
 	} catch (e) {
 		console.error('邮件接收异常: ', e);
-		throw e
+		try {
+			const setting = await settingService.query({ env });
+			if (setting && setting.tgBotToken && setting.tgChatId) {
+				const tgChatIds = setting.tgChatId.split(',');
+				await Promise.all(tgChatIds.map(async chatId => {
+					await fetch(`https://api.telegram.org/bot${setting.tgBotToken}/sendMessage`, {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json'
+						},
+						body: JSON.stringify({
+							chat_id: chatId,
+							text: `❌ <b>邮件接收异常:</b> ${e.message}\n<pre>${e.stack}</pre>`,
+							parse_mode: 'HTML'
+						})
+					});
+				}));
+			}
+		} catch (err) {
+			console.error('Failed to notify error to Telegram:', err.message);
+		}
+		throw e;
 	}
 }
