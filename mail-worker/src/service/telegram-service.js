@@ -178,6 +178,18 @@ const telegramService = {
 				}
 			};
 
+			// 0. Support Cancel commands
+			if (message && text && (text.startsWith('/cancel') || text.trim() === '取消')) {
+				const sessionStr = await c.env.kv.get(`tg_session:${chatId}`);
+				if (sessionStr) {
+					await c.env.kv.delete(`tg_session:${chatId}`);
+					await sendTelegramReply(`❌ <b>发信向导已取消，当前会话已清理。</b>`);
+				} else {
+					await sendTelegramReply(`❌ <b>当前没有活跃的发信会话。</b>`);
+				}
+				return;
+			}
+
 			const editTelegramMessage = async (msgId, replyText, replyMarkup = null) => {
 				try {
 					const bodyObj = {
@@ -228,7 +240,7 @@ const telegramService = {
 					await c.env.kv.put(`tg_session:${chatId}`, JSON.stringify(sessionObj), { expirationTtl: 600 });
 					
 					await answerCallback(callbackQueryId);
-					await editTelegramMessage(messageId, `<b>发件人:</b> <code>${senderEmail}</code>\n\n请输入<b>收件人邮箱</b>：`);
+					await editTelegramMessage(messageId, `<b>发件人:</b> <code>${senderEmail}</code>\n\n请输入<b>收件人邮箱</b>（或输入 <code>/cancel</code> 取消）：`);
 					return;
 				}
 
@@ -298,14 +310,14 @@ const telegramService = {
 				if (session.step === 'recipient') {
 					const recipientEmail = text.trim();
 					if (!verifyUtils.isEmail(recipientEmail)) {
-						await sendTelegramReply(`⚠️ <b>格式不正确</b>\n请重新输入正确的<b>收件人邮箱</b>：`);
+						await sendTelegramReply(`⚠️ <b>格式不正确</b>\n请重新输入正确的<b>收件人邮箱</b>（或输入 <code>/cancel</code> 取消）：`);
 						return;
 					}
 
 					session.recipient = recipientEmail;
 					session.step = 'subject';
 					await c.env.kv.put(`tg_session:${chatId}`, JSON.stringify(session), { expirationTtl: 600 });
-					await sendTelegramReply(`<b>发件人:</b> <code>${session.sender}</code>\n<b>收件人:</b> <code>${session.recipient}</code>\n\n请输入<b>邮件主题</b>：`);
+					await sendTelegramReply(`<b>发件人:</b> <code>${session.sender}</code>\n<b>收件人:</b> <code>${session.recipient}</code>\n\n请输入<b>邮件主题</b>（或输入 <code>/cancel</code> 取消）：`);
 					return;
 				}
 
@@ -313,7 +325,7 @@ const telegramService = {
 					session.subject = text.trim();
 					session.step = 'body';
 					await c.env.kv.put(`tg_session:${chatId}`, JSON.stringify(session), { expirationTtl: 600 });
-					await sendTelegramReply(`<b>发件人:</b> <code>${session.sender}</code>\n<b>收件人:</b> <code>${session.recipient}</code>\n<b>主题:</b> <code>${session.subject}</code>\n\n请输入<b>邮件内容 (正文)</b>：`);
+					await sendTelegramReply(`<b>发件人:</b> <code>${session.sender}</code>\n<b>收件人:</b> <code>${session.recipient}</code>\n<b>主题:</b> <code>${session.subject}</code>\n\n请输入<b>邮件内容 (正文)</b>（或输入 <code>/cancel</code> 取消）：`);
 					return;
 				}
 
@@ -394,12 +406,13 @@ const telegramService = {
 							for (const acc of accounts) {
 								keyboard.push([{ text: acc.email, callback_data: `tg_cb:sender:${acc.email}` }]);
 							}
+							keyboard.push([{ text: '❌ 取消', callback_data: 'tg_cb:cancel_send' }]);
 
 							// Set session
 							const sessionObj = { step: 'sender' };
 							await c.env.kv.put(`tg_session:${chatId}`, JSON.stringify(sessionObj), { expirationTtl: 600 });
 
-							await sendTelegramReply(`📝 <b>新邮件发送向导</b>\n请选择发信人邮箱：`, {
+							await sendTelegramReply(`📝 <b>新邮件发送向导</b>\n请选择发信人邮箱（或发送 <code>/cancel</code> 取消）：`, {
 								inline_keyboard: keyboard
 							});
 						} catch (err) {
