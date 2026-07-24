@@ -30,6 +30,46 @@
         </div>
       </div>
     </div>
+
+    <!-- API Key 管理模块 -->
+    <div class="api-key-section">
+      <div class="title">{{$t('apiKeyTitle')}}</div>
+      <div class="desc" style="color: var(--regular-text-color); margin-top: 8px; font-size: 14px;">
+        {{$t('apiKeyDesc')}}
+      </div>
+
+      <div class="key-box" style="margin-top: 15px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+        <el-input
+          :type="showKey ? 'text' : 'password'"
+          v-model="apiKey"
+          readonly
+          style="width: 320px;"
+        >
+          <template #append>
+            <el-button @click="showKey = !showKey">
+              {{ showKey ? $t('hideApiKey') : $t('showApiKey') }}
+            </el-button>
+          </template>
+        </el-input>
+        <el-button type="primary" @click="copyKey">{{$t('copyApiKey')}}</el-button>
+        <el-button type="warning" plain @click="handleResetApiKey">{{$t('resetApiKeyBtn')}}</el-button>
+      </div>
+
+      <div class="curl-example" style="margin-top: 20px;">
+        <div style="font-weight: bold; margin-bottom: 8px; font-size: 14px;">{{$t('apiCurlExample')}}</div>
+        <div style="background-color: var(--el-fill-color-dark, #2b2b2b); color: #87e8de; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 13px; white-space: pre-wrap; word-break: break-all;">
+curl -X POST {{ originUrl }}/api/open/send \
+  -H "X-API-Key: {{ apiKey || 'YOUR_API_KEY' }}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "to": "recipient@example.com",
+    "subject": "测试邮件主题",
+    "content": "<p>邮件内容（支持 HTML）</p>"
+  }'
+        </div>
+      </div>
+    </div>
+
     <div class="del-email" v-perm="'my:delete'">
       <div class="title">{{$t('deleteUser')}}</div>
       <div style="color: var(--regular-text-color);">
@@ -49,13 +89,14 @@
   </div>
 </template>
 <script setup>
-import {reactive, ref, defineOptions} from 'vue'
-import {resetPassword, userDelete} from "@/request/my.js";
+import {reactive, ref, onMounted, defineOptions} from 'vue'
+import {resetPassword, userDelete, getApiKey, resetApiKey} from "@/request/my.js";
 import {useUserStore} from "@/store/user.js";
 import router from "@/router/index.js";
 import {accountSetName} from "@/request/account.js";
 import {useAccountStore} from "@/store/account.js";
 import {useI18n} from "vue-i18n";
+import { ElMessage, ElMessageBox } from 'element-plus';
 
 const { t } = useI18n()
 const accountStore = useAccountStore()
@@ -64,9 +105,55 @@ const setPwdLoading = ref(false)
 const setNameShow = ref(false)
 const accountName = ref(null)
 
+const apiKey = ref('')
+const showKey = ref(false)
+const originUrl = ref(window.location.origin)
+
 defineOptions({
   name: 'setting'
 })
+
+onMounted(() => {
+  fetchApiKey();
+});
+
+function fetchApiKey() {
+  getApiKey().then(res => {
+    if (res && res.data) {
+      apiKey.value = res.data
+    }
+  }).catch(() => {})
+}
+
+function copyKey() {
+  if (!apiKey.value) return;
+  navigator.clipboard.writeText(apiKey.value).then(() => {
+    ElMessage({
+      message: t('copySuccess'),
+      type: 'success',
+      plain: true,
+    })
+  });
+}
+
+function handleResetApiKey() {
+  ElMessageBox.confirm(t('resetApiKeyConfirm'), {
+    confirmButtonText: t('confirm'),
+    cancelButtonText: t('cancel'),
+    type: 'warning'
+  }).then(() => {
+    resetApiKey().then(res => {
+      if (res && res.data) {
+        apiKey.value = res.data
+        ElMessage({
+          message: t('saveSuccessMsg'),
+          type: 'success',
+          plain: true,
+        })
+      }
+    })
+  })
+}
 
 function showSetName() {
   accountName.value = userStore.user.name
@@ -185,6 +272,10 @@ function submitPwd() {
 
   @media (max-width: 767px) {
     padding: 30px 30px;
+  }
+
+  .api-key-section {
+    margin-bottom: 40px;
   }
 
   .update-pwd {

@@ -12,3 +12,12 @@ export function userDelete() {
     return http.delete('/my/delete')
 }
 
+export function getApiKey() {
+    return http.get('/my/api-key')
+}
+
+export function resetApiKey() {
+    return http.post('/my/api-key/reset')
+}
+
+
