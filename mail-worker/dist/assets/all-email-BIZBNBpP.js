@@ -1,0 +1,1 @@
+import{aI as l}from"./index-29wZbDOz.js";function e(a){return l.get("/allEmail/list",{params:{...a}})}function i(a){return l.delete("/allEmail/delete?emailIds="+a)}function m(a){return l.delete("/allEmail/batchDelete",{params:a})}function r(a){return l.get("/allEmail/latest",{params:{emailId:a},noMsg:!0,timeout:35*1e3})}export{i as a,r as b,m as c,e as d};

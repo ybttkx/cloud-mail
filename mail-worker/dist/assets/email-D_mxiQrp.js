@@ -1,0 +1,1 @@
+import{aw as l}from"./index-29wZbDOz.js";const a=l("email",{state:()=>({deleteIds:0,starScroll:null,emailScroll:null,cancelStarEmailId:0,addStarEmailId:0,contentData:{email:null,delType:null,showStar:!0,showReply:!0,showUnread:!1},sendScroll:null}),persist:{pick:["contentData"]}});export{a as u};
