@@ -4,6 +4,10 @@ import emailService from '../service/email-service';
 import accountService from '../service/account-service';
 import userService from '../service/user-service';
 import result from '../model/result';
+import orm from '../entity/orm';
+import account from '../entity/account';
+import { eq, and } from 'drizzle-orm';
+import { isDel } from '../const/entity-const';
 
 app.post('/open/send', async (c) => {
 	let apiKey = c.req.header('X-API-Key');
@@ -25,6 +29,7 @@ app.post('/open/send', async (c) => {
 
 	const body = await c.req.json();
 	let {
+		from, // 支持全局任意指定发件人邮箱 (例如 admin@ybovo.com)
 		accountId,
 		name,
 		sendType,
@@ -37,7 +42,7 @@ app.post('/open/send', async (c) => {
 		attachments
 	} = body;
 
-	// 统一处理收件人参数
+	// 1. 统一处理收件人参数
 	let targetReceivers = receiveEmail;
 	if (!targetReceivers) {
 		if (Array.isArray(to)) {
@@ -51,24 +56,35 @@ app.post('/open/send', async (c) => {
 		return c.json(result.fail('收件人邮箱 (to 或 receiveEmail) 不能为空'), 400);
 	}
 
-	// 若未显式提供 accountId，则自动绑定该用户的默认账号
+	// 2. 发件人邮箱与 accountId 全局关联与绑定
+	if (from && typeof from === 'string' && from.includes('@')) {
+		// 尝试匹配已有的账号 ID
+		const existAccount = await orm(c).select().from(account)
+			.where(and(eq(account.email, from.trim()), eq(account.userId, userId), eq(account.isDel, isDel.NORMAL)))
+			.get();
+		if (existAccount) {
+			accountId = existAccount.accountId;
+		}
+	}
+
+	// 若未找到指定 accountId，使用用户的默认主账号
 	if (!accountId) {
 		const userRow = await userService.selectById(c, userId);
 		if (userRow) {
-			const account = await accountService.selectByEmailIncludeDel(c, userRow.email);
-			if (account) {
-				accountId = account.accountId;
+			const acc = await accountService.selectByEmailIncludeDel(c, userRow.email);
+			if (acc) {
+				accountId = acc.accountId;
 			}
 		}
 	}
 
 	if (!accountId) {
-		return c.json(result.fail('未指定发件账号 ID 且无法自动关联默认发件邮箱'), 400);
+		return c.json(result.fail('系统未匹配到可用的默认发件账号'), 400);
 	}
 
 	const sendParams = {
 		accountId,
-		name,
+		name: name || (from ? from.split('@')[0] : ''),
 		sendType,
 		emailId,
 		receiveEmail: targetReceivers,

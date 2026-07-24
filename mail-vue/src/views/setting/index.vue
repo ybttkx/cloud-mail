@@ -56,12 +56,13 @@
       </div>
 
       <div class="curl-example" style="margin-top: 20px;">
-        <div style="font-weight: bold; margin-bottom: 8px; font-size: 14px;">{{$t('apiCurlExample')}}</div>
+        <div style="font-weight: bold; margin-bottom: 8px; font-size: 14px;">API 发信 Curl 调用示例</div>
         <div style="background-color: var(--el-fill-color-dark, #2b2b2b); color: #87e8de; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 13px; white-space: pre-wrap; word-break: break-all;">
-curl -X POST {{ originUrl }}/api/open/send \
+curl -X POST https://mail.ybovo.com/api/open/send \
   -H "X-API-Key: {{ apiKey || 'YOUR_API_KEY' }}" \
   -H "Content-Type: application/json" \
   -d '{
+    "from": "admin@ybovo.com",
     "to": "recipient@example.com",
     "subject": "测试邮件主题",
     "content": "<p>邮件内容（支持 HTML）</p>"
@@ -107,7 +108,6 @@ const accountName = ref(null)
 
 const apiKey = ref('')
 const showKey = ref(false)
-const originUrl = ref(window.location.origin)
 
 defineOptions({
   name: 'setting'
@@ -119,8 +119,9 @@ onMounted(() => {
 
 function fetchApiKey() {
   getApiKey().then(res => {
-    if (res && res.data) {
-      apiKey.value = res.data
+    // 兼容 axios 拦截器自动解包的情况
+    if (res) {
+      apiKey.value = typeof res === 'string' ? res : (res.data || res)
     }
   }).catch(() => {})
 }
@@ -143,8 +144,8 @@ function handleResetApiKey() {
     type: 'warning'
   }).then(() => {
     resetApiKey().then(res => {
-      if (res && res.data) {
-        apiKey.value = res.data
+      if (res) {
+        apiKey.value = typeof res === 'string' ? res : (res.data || res)
         ElMessage({
           message: t('saveSuccessMsg'),
           type: 'success',
