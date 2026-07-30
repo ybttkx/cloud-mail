@@ -153,6 +153,7 @@ const emailService = {
 
 		let {
 			accountId, //发送账号id
+			senderEmail, // Open API 管理员指定的实际发件地址
 			name, //发件人名字
 			sendType, //发件类型
 			emailId, //邮件id，如果是回复邮件会带
@@ -228,7 +229,8 @@ const emailService = {
 
 		}
 
-		const domain = emailUtils.getDomain(accountRow.email);
+		const actualSenderEmail = senderEmail || accountRow.email;
+		const domain = emailUtils.getDomain(actualSenderEmail);
 		const resendToken = resendTokens[domain];
 
 		//如果接收方存在站外邮箱，又没有resend token
@@ -264,7 +266,7 @@ const emailService = {
 			const resend = new Resend(resendToken);
 
 			const sendForm = {
-				from: `${name} <${accountRow.email}>`,
+				from: `${name} <${actualSenderEmail}>`,
 				to: [...receiveEmail],
 				subject: subject,
 				text: text,
@@ -297,7 +299,7 @@ const emailService = {
 
 		//封装数据保存到数据库
 		const emailData = {};
-		emailData.sendEmail = accountRow.email;
+		emailData.sendEmail = actualSenderEmail;
 		emailData.name = name;
 		emailData.subject = subject;
 		emailData.content = html;

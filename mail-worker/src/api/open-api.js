@@ -8,6 +8,9 @@ import orm from '../entity/orm';
 import account from '../entity/account';
 import { eq, and } from 'drizzle-orm';
 import { isDel } from '../const/entity-const';
+import settingService from '../service/setting-service';
+import emailUtils from '../utils/email-utils';
+import verifyUtils from '../utils/verify-utils';
 
 app.post('/open/send', async (c) => {
 	let apiKey = c.req.header('X-API-Key');
@@ -41,6 +44,22 @@ app.post('/open/send', async (c) => {
 		subject,
 		attachments
 	} = body;
+	const requestedFrom = typeof from === 'string' ? from.trim() : '';
+	const hasFrom = from !== undefined && from !== null && from !== '';
+
+	if (hasFrom && !verifyUtils.isEmail(requestedFrom)) {
+		return c.json(result.fail('发件人邮箱格式不正确'), 400);
+	}
+
+	const userRow = await userService.selectById(c, userId);
+	const isAdmin = userRow && userRow.email.toLowerCase() === String(c.env.admin).toLowerCase();
+	if (hasFrom) {
+		const { domainList } = await settingService.query(c);
+		const requestedDomain = '@' + emailUtils.getDomain(requestedFrom).toLowerCase();
+		if (!domainList.some(domain => domain.toLowerCase() === requestedDomain)) {
+			return c.json(result.fail('发件人域名未配置'), 403);
+		}
+	}
 
 	// 1. 统一处理收件人参数
 	let targetReceivers = receiveEmail;
@@ -57,13 +76,15 @@ app.post('/open/send', async (c) => {
 	}
 
 	// 2. 发件人邮箱与 accountId 全局关联与绑定
-	if (from && typeof from === 'string' && from.includes('@')) {
+	if (hasFrom) {
 		// 尝试匹配已有的账号 ID
 		const existAccount = await orm(c).select().from(account)
-			.where(and(eq(account.email, from.trim()), eq(account.userId, userId), eq(account.isDel, isDel.NORMAL)))
+			.where(and(eq(account.email, requestedFrom), eq(account.userId, userId), eq(account.isDel, isDel.NORMAL)))
 			.get();
 		if (existAccount) {
 			accountId = existAccount.accountId;
+		} else if (!isAdmin) {
+			return c.json(result.fail('普通用户只能使用自己拥有的发件账号'), 403);
 		}
 	}
 
@@ -84,7 +105,8 @@ app.post('/open/send', async (c) => {
 
 	const sendParams = {
 		accountId,
-		name: name || (from ? from.split('@')[0] : ''),
+		name: name || (requestedFrom ? requestedFrom.split('@')[0] : ''),
+		senderEmail: hasFrom ? requestedFrom : '',
 		sendType,
 		emailId,
 		receiveEmail: targetReceivers,
