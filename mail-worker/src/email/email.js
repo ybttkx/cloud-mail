@@ -10,6 +10,7 @@ import emailUtils from '../utils/email-utils';
 import roleService from '../service/role-service';
 import userService from '../service/user-service';
 import telegramService from '../service/telegram-service';
+import qqService from '../service/qq-service';
 
 export async function email(message, env, ctx) {
 
@@ -146,6 +147,8 @@ export async function email(message, env, ctx) {
 		if (tgBotStatus === settingConst.tgBotStatus.OPEN && tgChatId) {
 			await telegramService.sendEmailToBot({ env }, emailRow)
 		}
+
+		await qqService.sendEmailToGroup({ env }, emailRow);
 
 		//转发到其他邮箱
 		if (forwardStatus === settingConst.forwardStatus.OPEN && forwardEmail) {
