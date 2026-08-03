@@ -4,9 +4,17 @@ const GROUP_OPENID_KEY = 'qq:official:group-openid';
 
 async function signValidation(secret, eventTs, plainToken) {
 	const seedText = secret.repeat(Math.ceil(32 / secret.length)).slice(0, 32);
+	const seed = new TextEncoder().encode(seedText);
+	const pkcs8Prefix = new Uint8Array([
+		0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06,
+		0x03, 0x2b, 0x65, 0x70, 0x04, 0x22, 0x04, 0x20
+	]);
+	const pkcs8Key = new Uint8Array(pkcs8Prefix.length + seed.length);
+	pkcs8Key.set(pkcs8Prefix);
+	pkcs8Key.set(seed, pkcs8Prefix.length);
 	const privateKey = await crypto.subtle.importKey(
-		'raw',
-		new TextEncoder().encode(seedText),
+		'pkcs8',
+		pkcs8Key,
 		{ name: 'Ed25519' },
 		false,
 		['sign']
