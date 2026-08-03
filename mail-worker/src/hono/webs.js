@@ -22,5 +22,4 @@ import '../api/telegram-api'
 import '../api/oauth-api'
 import '../api/api-key-api'
 import '../api/open-api'
-import '../api/qq-api'
 export default app;
