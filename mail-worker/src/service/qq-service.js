@@ -6,6 +6,7 @@ import emailUtils from '../utils/email-utils';
 const TOKEN_KEY = 'qq:official:access-token';
 const TOKEN_URL = 'https://bots.qq.com/app/getAppAccessToken';
 const API_URL = 'https://api.sgroup.qq.com';
+const GROUP_OPENID_KEY = 'qq:official:group-openid';
 
 const qqService = {
 	async getAccessToken(c) {
@@ -43,7 +44,7 @@ const qqService = {
 	},
 
 	async sendEmailToGroup(c, email) {
-		const groupId = c.env.QQ_BOT_GROUP_ID;
+		const groupId = await c.env.kv.get(GROUP_OPENID_KEY) || c.env.QQ_BOT_GROUP_ID;
 		if (!groupId) return;
 
 		try {
