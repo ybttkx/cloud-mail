@@ -6,6 +6,10 @@ keep_vars = true
 [observability]
 enabled = true
 
+[[routes]]
+pattern = "mail.ybovo.com/*"
+zone_name = "ybovo.com"
+
 [[d1_databases]]
 binding = "db"
 database_name = "mail"
